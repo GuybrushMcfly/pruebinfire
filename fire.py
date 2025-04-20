@@ -141,12 +141,10 @@ with tab1:
         st.warning("⚠️ No hay actividades registradas.")
         st.stop()
 
-    actividad_input = st.text_input("🔍 Buscar actividad (escribí parte del nombre):")
-    coincidencias = [k for k in actividades_dict if actividad_input.lower() in k.lower()] if actividad_input else []
+    actividades_nombres = sorted(actividades_dict.keys())
+    actividad_sel = st.selectbox("🔍 Buscar y seleccionar actividad:", actividades_nombres, key="actividad_search")
 
-    actividad_sel = None
-    if coincidencias:
-        actividad_sel = st.selectbox("Coincidencias:", coincidencias)
+    if actividad_sel:
         id_act = actividades_dict[actividad_sel]
         doc_ref = db.collection("actividades").document(id_act)
         datos_act = doc_ref.get().to_dict()
@@ -176,8 +174,7 @@ with tab1:
 
         st.markdown("### 🔹 Dictado")
         mostrar_stepper(pasos_dictado, datos_seg, editable=True, doc_ref=seguimiento_ref, suffix="dictado")
-    else:
-        st.info("⌨️ Escribí para buscar una actividad.")
+
 
 
 # ─────────────────────────────────────────────────────────────
