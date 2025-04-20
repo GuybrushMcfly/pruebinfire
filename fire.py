@@ -152,6 +152,7 @@ with tab2:
 # ─────────────────────────────────────────────────────────────
 # ➕ TAB 3: CREAR NUEVA COMISIÓN
 # ─────────────────────────────────────────────────────────────
+
 with tab3:
     st.title("➕ Crear nueva comisión")
 
@@ -167,22 +168,23 @@ with tab3:
         st.warning("⚠️ No hay actividades disponibles. Creá una actividad primero.")
         st.stop()
 
-    # Crear claves únicas solo si no existen
-    if "comision_form_limpio" not in st.session_state:
-        st.session_state["comision_id"] = ""
-        st.session_state["comision_fecha_ini"] = datetime.today()
-        st.session_state["comision_fecha_fin"] = datetime.today()
-        st.session_state["comision_vacantes"] = 0
-        st.session_state["comision_aprobados"] = 0
-        st.session_state["comision_form_limpio"] = True
+    # Inicializar claves si es la primera vez o se acaba de crear
+    if st.session_state.get("reset_comision", True):
+        st.session_state["id_comision"] = ""
+        st.session_state["actividad_comision"] = list(actividades_dict.keys())[0]
+        st.session_state["fecha_inicio_comision"] = None
+        st.session_state["fecha_fin_comision"] = None
+        st.session_state["vacantes_comision"] = 0
+        st.session_state["aprobados_comision"] = 0
+        st.session_state["reset_comision"] = False
 
     with st.form("form_crear_comision"):
-        id_com = st.text_input("ID de la comisión (ej. JU-HTML-01)", key="comision_id")
-        act_sel = st.selectbox("Actividad asociada:", sorted(actividades_dict.keys()))
-        fecha_ini = st.date_input("Fecha de inicio", key="comision_fecha_ini")
-        fecha_fin = st.date_input("Fecha de finalización", key="comision_fecha_fin")
-        vacantes = st.number_input("Vacantes", min_value=0, value=st.session_state["comision_vacantes"], key="comision_vacantes")
-        aprobados = st.number_input("Aprobados", min_value=0, value=st.session_state["comision_aprobados"], key="comision_aprobados")
+        id_com = st.text_input("ID de la comisión (ej. JU-HTML-01)", key="id_comision")
+        act_sel = st.selectbox("Actividad asociada:", sorted(actividades_dict.keys()), key="actividad_comision")
+        fecha_ini = st.date_input("Fecha de inicio", key="fecha_inicio_comision")
+        fecha_fin = st.date_input("Fecha de finalización", key="fecha_fin_comision")
+        vacantes = st.number_input("Vacantes", min_value=0, value=st.session_state["vacantes_comision"], key="vacantes_comision")
+        aprobados = st.number_input("Aprobados", min_value=0, value=st.session_state["aprobados_comision"], key="aprobados_comision")
         crear = st.form_submit_button("🚀 Crear comisión")
 
     if crear:
@@ -237,13 +239,11 @@ with tab3:
             seg_ref.set(seguimiento_data)
 
             st.success(f"✅ Comisión '{id_com}' creada correctamente.")
-
-            # 👉 Reset automático: se borra el estado y se recarga sin rerun()
-            st.session_state.clear()
-            st.experimental_set_query_params(refresh="1")
+            st.session_state["reset_comision"] = True
 
         except Exception as e:
             st.error(f"❌ Error al crear la comisión: {e}")
+
 
 
 
