@@ -16,7 +16,12 @@ db = firestore.client()
 st.set_page_config(page_title="Gestión Actividades", layout="wide")
 
 # --- TABS PRINCIPALES ---
-tab1, tab2, tab3 = st.tabs(["📋 Ver actividad", "➕ Crear nueva actividad", "➕ Crear comisión"])
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📋 Ver actividad",
+    "➕ Crear nueva actividad",
+    "➕ Crear comisión",
+    "🛠️ Editar comisiones"
+])
 
 # ─────────────────────────────────────────────────────────────
 # 📋 TAB 1: VER ACTIVIDAD
@@ -237,6 +242,77 @@ with tab3:
             seg_ref.set(seguimiento_data)
 
             st.success(f"✅ Comisión '{id_com}' creada correctamente.")
+            
         except Exception as e:
             st.error(f"❌ Error al crear la comisión: {e}")
+
+        # Limpiar formulario tras creación
+        for key in st.session_state.keys():
+            if key.startswith("form_crear_comision"):
+                st.session_state[key] = None
+        st.experimental_rerun()
+
+# ─────────────────────────────────────────────────────────────
+# 🛠️ TAB 4: EDITAR COMISIONES EXISTENTES
+# ─────────────────────────────────────────────────────────────
+with tab4:
+    st.title("🛠️ Editar comisiones existentes")
+
+    # 1. Cargar comisiones
+    coms_raw = db.collection("comisiones").stream()
+    comisiones = [doc.to_dict() for doc in coms_raw]
+    if not comisiones:
+        st.warning("No hay comisiones cargadas.")
+        st.stop()
+
+    # 2. Obtener lista de actividades
+    actividades = db.collection("actividades").stream()
+    actividades_dict = {doc.id: doc.to_dict().get("NombreActividad", doc.id) for doc in actividades}
+    id_to_nombre = {v: k for k, v in actividades_dict.items()}
+
+    nombre_sel = st.selectbox("🔍 Filtrar por actividad:", sorted(actividades_dict.values()))
+    id_actividad = id_to_nombre[nombre_sel]
+
+    coms_filtradas = [c for c in comisiones if c["Id_Actividad"] == id_actividad]
+
+    if not coms_filtradas:
+        st.warning("No hay comisiones para esta actividad.")
+        st.stop()
+
+    com_ids = [c["Id_Comision"] for c in coms_filtradas]
+    com_id_sel = st.selectbox("🔍 Seleccioná una comisión:", com_ids)
+    com_data = next(c for c in coms_filtradas if c["Id_Comision"] == com_id_sel)
+
+    # 3. Formulario de edición
+    with st.form("form_editar_comision"):
+        st.subheader(f"✏️ Editar comisión: {com_id_sel}")
+        f_ini = st.date_input("Fecha de inicio", value=datetime.strptime(com_data["FechaInicio"], "%Y-%m-%d").date())
+        f_fin = st.date_input("Fecha de finalización", value=datetime.strptime(com_data["FechaFin"], "%Y-%m-%d").date())
+        vac = st.number_input("Vacantes", value=com_data.get("Vacantes", 0), min_value=0)
+        apr = st.number_input("Aprobados", value=com_data.get("Aprobados", 0), min_value=0)
+        guardar = st.form_submit_button("💾 Actualizar comisión")
+
+    if guardar:
+        hoy = datetime.today().date()
+        if hoy < f_ini:
+            estado = "PENDIENTE"
+        elif hoy > f_fin:
+            estado = "FINALIZADA"
+        else:
+            estado = "CURSANDO"
+
+        try:
+            db.collection("comisiones").document(com_id_sel).update({
+                "FechaInicio": f_ini.strftime("%Y-%m-%d"),
+                "FechaFin": f_fin.strftime("%Y-%m-%d"),
+                "Vacantes": vac,
+                "Aprobados": apr,
+                "EstadoComision": estado
+            })
+            st.success("✅ Comisión actualizada correctamente")
+            st.experimental_rerun()
+        except Exception as e:
+            st.error(f"❌ Error al actualizar: {e}")
+
+
 
