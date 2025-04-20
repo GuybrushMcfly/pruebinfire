@@ -152,9 +152,6 @@ with tab2:
 # ─────────────────────────────────────────────────────────────
 # ➕ TAB 3: CREAR NUEVA COMISIÓN
 # ─────────────────────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────
-# ➕ TAB 3: CREAR NUEVA COMISIÓN
-# ─────────────────────────────────────────────────────────────
 with tab3:
     st.title("➕ Crear nueva comisión")
 
@@ -170,15 +167,25 @@ with tab3:
         st.warning("⚠️ No hay actividades disponibles. Creá una actividad primero.")
         st.stop()
 
-    # Forzar valores en blanco por defecto (con claves únicas)
-    id_com = st.text_input("ID de la comisión (ej. JU-HTML-01)", key="comision_id")
-    act_sel = st.selectbox("Actividad asociada:", sorted(actividades_dict.keys()), key="comision_actividad")
-    fecha_ini = st.date_input("Fecha de inicio", key="comision_fecha_ini")
-    fecha_fin = st.date_input("Fecha de finalización", key="comision_fecha_fin")
-    vacantes = st.number_input("Vacantes", min_value=0, value=0, key="comision_vacantes")
-    aprobados = st.number_input("Aprobados", min_value=0, value=0, key="comision_aprobados")
+    # Crear claves únicas solo si no existen
+    if "comision_form_limpio" not in st.session_state:
+        st.session_state["comision_id"] = ""
+        st.session_state["comision_fecha_ini"] = datetime.today()
+        st.session_state["comision_fecha_fin"] = datetime.today()
+        st.session_state["comision_vacantes"] = 0
+        st.session_state["comision_aprobados"] = 0
+        st.session_state["comision_form_limpio"] = True
 
-    if st.button("🚀 Crear comisión", key="crear_comision_btn"):
+    with st.form("form_crear_comision"):
+        id_com = st.text_input("ID de la comisión (ej. JU-HTML-01)", key="comision_id")
+        act_sel = st.selectbox("Actividad asociada:", sorted(actividades_dict.keys()))
+        fecha_ini = st.date_input("Fecha de inicio", key="comision_fecha_ini")
+        fecha_fin = st.date_input("Fecha de finalización", key="comision_fecha_fin")
+        vacantes = st.number_input("Vacantes", min_value=0, value=st.session_state["comision_vacantes"], key="comision_vacantes")
+        aprobados = st.number_input("Aprobados", min_value=0, value=st.session_state["comision_aprobados"], key="comision_aprobados")
+        crear = st.form_submit_button("🚀 Crear comisión")
+
+    if crear:
         if not id_com:
             st.warning("🟡 Ingresá un ID para la comisión.")
             st.stop()
@@ -188,7 +195,6 @@ with tab3:
         fecha_ini_str = fecha_ini.strftime("%Y-%m-%d")
         fecha_fin_str = fecha_fin.strftime("%Y-%m-%d")
 
-        # Cálculo automático del estado
         hoy = datetime.today().date()
         if hoy < fecha_ini:
             estado = "PENDIENTE"
@@ -216,7 +222,6 @@ with tab3:
                 "Aprobados": aprobados
             })
 
-            # Cargar pasos en seguimiento
             pasos_campus = [
                 "C_ArmadoAula", "C_Matriculacion", "C_AperturaCurso", "C_CierreCurso", "C_AsistenciaEvaluacion"
             ]
@@ -233,12 +238,13 @@ with tab3:
 
             st.success(f"✅ Comisión '{id_com}' creada correctamente.")
 
-            # Limpiar valores en sesión manualmente
-            for k in ["comision_id", "comision_fecha_ini", "comision_fecha_fin", "comision_vacantes", "comision_aprobados"]:
-                st.session_state[k] = ""
+            # 👉 Reset automático: se borra el estado y se recarga sin rerun()
+            st.session_state.clear()
+            st.experimental_set_query_params(refresh="1")
 
         except Exception as e:
             st.error(f"❌ Error al crear la comisión: {e}")
+
 
 
 # ─────────────────────────────────────────────────────────────
