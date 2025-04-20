@@ -60,7 +60,7 @@ with tab1:
     colores = {"ok": "#4DB6AC", "now": "#FF8A65", "no": "#D3D3D3"}
     iconos = {"finalizado": "✓", "actual": "⏳", "pendiente": "⚪"}
 
-    def mostrar_stepper(pasos, datos, editable=False, doc_ref=None):
+    def mostrar_stepper(pasos, datos, editable=False, doc_ref=None, suffix=""):
         temp_estado = {}
         for col, _ in pasos:
             temp_estado[col] = datos.get(col, False)
@@ -98,8 +98,8 @@ with tab1:
             with st.expander("🛠️ Editar estado"):
                 cambios = {}
                 for col, label in pasos:
-                    cambios[col] = st.checkbox(label, value=temp_estado[col], key=f"edit_{col}")
-                if st.button("💾 Actualizar estado"):
+                    cambios[col] = st.checkbox(label, value=temp_estado[col], key=f"edit_{suffix}_{col}")
+                if st.button("💾 Actualizar estado", key=f"btn_update_{suffix}"):
                     for i in range(len(pasos)):
                         col = pasos[i][0]
                         if cambios[col]:
@@ -142,7 +142,7 @@ with tab1:
     datos_act = doc_ref.get().to_dict()
 
     st.markdown("### 🔹 Actividad")
-    mostrar_stepper(pasos_act, datos_act, editable=True, doc_ref=doc_ref)
+    mostrar_stepper(pasos_act, datos_act, editable=True, doc_ref=doc_ref, suffix="act")
 
     # Comisiones de esa actividad
     comisiones = db.collection("comisiones").where("Id_Actividad", "==", id_act).stream()
@@ -164,10 +164,11 @@ with tab1:
     datos_seg = seguimiento_doc.to_dict()
 
     st.markdown("### 🔹 Campus Virtual")
-    mostrar_stepper(pasos_campus, datos_seg, editable=True, doc_ref=seguimiento_ref)
+    mostrar_stepper(pasos_campus, datos_seg, editable=True, doc_ref=seguimiento_ref, suffix="campus")
 
     st.markdown("### 🔹 Dictado")
-    mostrar_stepper(pasos_dictado, datos_seg, editable=True, doc_ref=seguimiento_ref)
+    mostrar_stepper(pasos_dictado, datos_seg, editable=True, doc_ref=seguimiento_ref, suffix="dictado")
+
 
 
 
