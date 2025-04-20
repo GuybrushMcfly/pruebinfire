@@ -174,8 +174,6 @@ with tab3:
         st.session_state["actividad_comision"] = list(actividades_dict.keys())[0]
         st.session_state["fecha_inicio_comision"] = None
         st.session_state["fecha_fin_comision"] = None
-        st.session_state["vacantes_comision"] = 0
-        st.session_state["aprobados_comision"] = 0
         st.session_state["reset_comision"] = False
 
     with st.form("form_crear_comision"):
@@ -190,6 +188,10 @@ with tab3:
             st.warning("🟡 Ingresá un ID para la comisión.")
             st.stop()
 
+        if fecha_ini > fecha_fin:
+            st.error("❌ La fecha de inicio no puede ser posterior a la fecha de finalización.")
+            st.stop()
+
         id_act = actividades_dict[act_sel]
         año = fecha_ini.year
 
@@ -200,6 +202,9 @@ with tab3:
             estado = "FINALIZADA"
         else:
             estado = "CURSANDO"
+
+        fecha_ini_str = fecha_ini.strftime("%d/%m/%Y")
+        fecha_fin_str = fecha_fin.strftime("%d/%m/%Y")
 
         com_ref = db.collection("comisiones").document(id_com)
         seg_ref = db.collection("seguimiento").document(id_com)
@@ -215,9 +220,7 @@ with tab3:
                 "AñoComision": año,
                 "FechaInicio": fecha_ini_str,
                 "FechaFin": fecha_fin_str,
-                "EstadoComision": estado,
-         #       "Vacantes": vacantes,
-         #       "Aprobados": aprobados
+                "EstadoComision": estado
             })
 
             pasos_campus = [
@@ -239,7 +242,6 @@ with tab3:
 
         except Exception as e:
             st.error(f"❌ Error al crear la comisión: {e}")
-
 
 
 
