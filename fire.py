@@ -242,13 +242,11 @@ with tab3:
             seg_ref.set(seguimiento_data)
 
             st.success(f"✅ Comisión '{id_com}' creada correctamente.")
+            st.experimental_rerun()  # ← al final del try
             
         except Exception as e:
             st.error(f"❌ Error al crear la comisión: {e}")
 
-        # Limpiar formulario tras creación
-        # Limpiar campos manualmente sin usar st.experimental_rerun
-        st.session_state.clear()
 
 
 # ─────────────────────────────────────────────────────────────
