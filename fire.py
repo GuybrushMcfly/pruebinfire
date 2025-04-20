@@ -168,13 +168,21 @@ with tab3:
         st.warning("⚠️ No hay actividades disponibles. Creá una actividad primero.")
         st.stop()
 
+    # Claves para poder reiniciar campos
+    k_id = "comision_id"
+    k_act = "comision_act"
+    k_ini = "comision_fecha_ini"
+    k_fin = "comision_fecha_fin"
+    k_vac = "comision_vacantes"
+    k_apr = "comision_aprobados"
+
     with st.form("form_crear_comision"):
-        id_com = st.text_input("ID de la comisión (ej. JU-HTML-01)")
-        act_sel = st.selectbox("Actividad asociada:", sorted(actividades_dict.keys()))
-        fecha_ini = st.date_input("Fecha de inicio")
-        fecha_fin = st.date_input("Fecha de finalización")
-        vacantes = st.number_input("Vacantes", min_value=0, value=0)
-        aprobados = st.number_input("Aprobados", min_value=0, value=0)
+        id_com = st.text_input("ID de la comisión (ej. JU-HTML-01)", key=k_id)
+        act_sel = st.selectbox("Actividad asociada:", sorted(actividades_dict.keys()), key=k_act)
+        fecha_ini = st.date_input("Fecha de inicio", key=k_ini)
+        fecha_fin = st.date_input("Fecha de finalización", key=k_fin)
+        vacantes = st.number_input("Vacantes", min_value=0, value=0, key=k_vac)
+        aprobados = st.number_input("Aprobados", min_value=0, value=0, key=k_apr)
         crear = st.form_submit_button("🚀 Crear comisión")
 
     if crear:
@@ -187,7 +195,7 @@ with tab3:
         fecha_ini_str = fecha_ini.strftime("%Y-%m-%d")
         fecha_fin_str = fecha_fin.strftime("%Y-%m-%d")
 
-        # 👉 Cálculo automático del estado
+        # Estado automático
         hoy = datetime.today().date()
         if hoy < fecha_ini:
             estado = "PENDIENTE"
@@ -195,16 +203,6 @@ with tab3:
             estado = "FINALIZADA"
         else:
             estado = "CURSANDO"
-
-    if crear:
-        if not id_com:
-            st.warning("🟡 Ingresá un ID para la comisión.")
-            st.stop()
-
-        id_act = actividades_dict[act_sel]
-        año = fecha_ini.year
-        fecha_ini_str = fecha_ini.strftime("%Y-%m-%d")
-        fecha_fin_str = fecha_fin.strftime("%Y-%m-%d")
 
         com_ref = db.collection("comisiones").document(id_com)
         seg_ref = db.collection("seguimiento").document(id_com)
@@ -214,7 +212,6 @@ with tab3:
             st.stop()
 
         try:
-            # 1. Crear documento en COMISIONES
             com_ref.set({
                 "Id_Comision": id_com,
                 "Id_Actividad": id_act,
@@ -226,12 +223,11 @@ with tab3:
                 "Aprobados": aprobados
             })
 
-            # 2. Crear documento en SEGUIMIENTO con todos los pasos en False + _user/_timestamp
             pasos_campus = [
                 "C_ArmadoAula", "C_Matriculacion", "C_AperturaCurso", "C_CierreCurso", "C_AsistenciaEvaluacion"
             ]
             pasos_dictado = [
-                "D_Difusion", "D_AsignacionVacantes", "D_Cursada", "D_AsistenciaEvaluacion", "D_CreditosSAI", 
+                "D_Difusion", "D_AsignacionVacantes", "D_Cursada", "D_AsistenciaEvaluacion", "D_CreditosSAI"
             ]
             seguimiento_data = {"Id_Comision": id_com}
             for paso in pasos_campus + pasos_dictado:
@@ -242,10 +238,15 @@ with tab3:
             seg_ref.set(seguimiento_data)
 
             st.success(f"✅ Comisión '{id_com}' creada correctamente.")
-            st.experimental_rerun()  # ← al final del try
-            
+
+            # Limpiar los valores sin usar rerun
+            for k in [k_id, k_act, k_ini, k_fin, k_vac, k_apr]:
+                if k in st.session_state:
+                    del st.session_state[k]
+
         except Exception as e:
             st.error(f"❌ Error al crear la comisión: {e}")
+
 
 
 
