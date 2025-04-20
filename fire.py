@@ -156,6 +156,11 @@ with tab2:
 with tab3:
     st.title("➕ Crear nueva comisión")
 
+    # Limpiar valores al entrar a la pestaña (solo si no se ha enviado el formulario aún)
+    for k in ["id_comision", "actividad_comision", "fecha_ini_com", "fecha_fin_com", "vacantes_com", "aprobados_com"]:
+        if k not in st.session_state:
+            st.session_state[k] = ""
+
     # Cargar lista de actividades
     actividades = db.collection("actividades").stream()
     actividades_dict = {}
@@ -168,21 +173,13 @@ with tab3:
         st.warning("⚠️ No hay actividades disponibles. Creá una actividad primero.")
         st.stop()
 
-    # Claves para poder reiniciar campos
-    k_id = "comision_id"
-    k_act = "comision_act"
-    k_ini = "comision_fecha_ini"
-    k_fin = "comision_fecha_fin"
-    k_vac = "comision_vacantes"
-    k_apr = "comision_aprobados"
-
     with st.form("form_crear_comision"):
-        id_com = st.text_input("ID de la comisión (ej. JU-HTML-01)", key=k_id)
-        act_sel = st.selectbox("Actividad asociada:", sorted(actividades_dict.keys()), key=k_act)
-        fecha_ini = st.date_input("Fecha de inicio", key=k_ini)
-        fecha_fin = st.date_input("Fecha de finalización", key=k_fin)
-        vacantes = st.number_input("Vacantes", min_value=0, value=0, key=k_vac)
-        aprobados = st.number_input("Aprobados", min_value=0, value=0, key=k_apr)
+        id_com = st.text_input("ID de la comisión (ej. JU-HTML-01)", key="id_comision")
+        act_sel = st.selectbox("Actividad asociada:", sorted(actividades_dict.keys()), key="actividad_comision")
+        fecha_ini = st.date_input("Fecha de inicio", key="fecha_ini_com")
+        fecha_fin = st.date_input("Fecha de finalización", key="fecha_fin_com")
+        vacantes = st.number_input("Vacantes", min_value=0, value=0, key="vacantes_com")
+        aprobados = st.number_input("Aprobados", min_value=0, value=0, key="aprobados_com")
         crear = st.form_submit_button("🚀 Crear comisión")
 
     if crear:
@@ -195,6 +192,7 @@ with tab3:
         fecha_ini_str = fecha_ini.strftime("%Y-%m-%d")
         fecha_fin_str = fecha_fin.strftime("%Y-%m-%d")
 
+        # 👉 Cálculo automático del estado
         hoy = datetime.today().date()
         if hoy < fecha_ini:
             estado = "PENDIENTE"
@@ -226,7 +224,7 @@ with tab3:
                 "C_ArmadoAula", "C_Matriculacion", "C_AperturaCurso", "C_CierreCurso", "C_AsistenciaEvaluacion"
             ]
             pasos_dictado = [
-                "D_Difusion", "D_AsignacionVacantes", "D_Cursada", "D_AsistenciaEvaluacion", "D_CreditosSAI"
+                "D_Difusion", "D_AsignacionVacantes", "D_Cursada", "D_AsistenciaEvaluacion", "D_CreditosSAI", 
             ]
             seguimiento_data = {"Id_Comision": id_com}
             for paso in pasos_campus + pasos_dictado:
@@ -238,17 +236,13 @@ with tab3:
 
             st.success(f"✅ Comisión '{id_com}' creada correctamente.")
 
-            # 👇 Forzar borrado de campos y refresco limpio
-            st.session_state.pop("comision_id", None)
-            st.session_state.pop("comision_act", None)
-            st.session_state.pop("comision_fecha_ini", None)
-            st.session_state.pop("comision_fecha_fin", None)
-            st.session_state.pop("comision_vacantes", None)
-            st.session_state.pop("comision_aprobados", None)
+            # Limpiar todos los campos al enviar
+            for k in ["id_comision", "actividad_comision", "fecha_ini_com", "fecha_fin_com", "vacantes_com", "aprobados_com"]:
+                st.session_state[k] = ""
 
-            st.rerun()
         except Exception as e:
             st.error(f"❌ Error al crear la comisión: {e}")
+
 
 
 
