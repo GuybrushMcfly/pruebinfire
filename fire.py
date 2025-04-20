@@ -16,7 +16,7 @@ db = firestore.client()
 st.set_page_config(page_title="Gestión Actividades", layout="wide")
 
 # --- TABS PRINCIPALES ---
-tab1, tab2 = st.tabs(["📋 Ver actividad", "➕ Crear nueva actividad"])
+tab1, tab2, tab3 = st.tabs(["📋 Ver actividad", "➕ Crear nueva actividad", "➕ Crear comisión"])
 
 # ─────────────────────────────────────────────────────────────
 # 📋 TAB 1: VER ACTIVIDAD
