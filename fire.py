@@ -142,13 +142,13 @@ with tab1:
         st.stop()
 
     actividades_nombres = sorted(actividades_dict.keys())
-    actividad_sel = st.selectbox(
-    "🔍 Buscar y seleccionar actividad:",
-    [""] + actividades_nombres,
-    index=0,
-    key="actividad_search"
-)
-    
+    texto_busqueda = st.text_input("🔍 Buscar actividad (escribí parte del nombre):", "")
+
+    coincidencias = [a for a in actividades_nombres if texto_busqueda.lower() in a.lower()] if texto_busqueda else []
+
+    actividad_sel = None
+    if coincidencias:
+        actividad_sel = st.selectbox("Resultados encontrados:", coincidencias, key="actividad_filtrada")
 
     if actividad_sel:
         id_act = actividades_dict[actividad_sel]
