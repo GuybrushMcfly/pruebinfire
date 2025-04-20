@@ -143,3 +143,83 @@ with tab2:
                     "A_DictamenINAP": False,
                 })
                 st.success(f"✅ Actividad '{nombre}' creada con ID '{nuevo_id}'")
+
+# ─────────────────────────────────────────────────────────────
+# ➕ TAB 3: CREAR NUEVA COMISIÓN
+# ─────────────────────────────────────────────────────────────
+tab3 = st.tabs(["➕ Crear comisión"])[0]
+
+with tab3:
+    st.title("➕ Crear nueva comisión")
+
+    # Cargar lista de actividades
+    actividades = db.collection("actividades").stream()
+    actividades_dict = {}
+    for doc in actividades:
+        data = doc.to_dict()
+        if "NombreActividad" in data:
+            actividades_dict[data["NombreActividad"]] = doc.id
+
+    if not actividades_dict:
+        st.warning("⚠️ No hay actividades disponibles. Creá una actividad primero.")
+        st.stop()
+
+    with st.form("form_crear_comision"):
+        id_com = st.text_input("ID de la comisión (ej. JU-HTML-01)")
+        act_sel = st.selectbox("Actividad asociada:", sorted(actividades_dict.keys()))
+        fecha_ini = st.date_input("Fecha de inicio")
+        fecha_fin = st.date_input("Fecha de finalización")
+        estado = st.selectbox("Estado de la comisión")
+        vacantes = st.number_input("Vacantes", min_value=0, value=0)
+        aprobados = st.number_input("Aprobados", min_value=0, value=0)
+        crear = st.form_submit_button("🚀 Crear comisión")
+
+    if crear:
+        if not id_com:
+            st.warning("🟡 Ingresá un ID para la comisión.")
+            st.stop()
+
+        id_act = actividades_dict[act_sel]
+        año = fecha_ini.year
+        fecha_ini_str = fecha_ini.strftime("%Y-%m-%d")
+        fecha_fin_str = fecha_fin.strftime("%Y-%m-%d")
+
+        com_ref = db.collection("comisiones").document(id_com)
+        seg_ref = db.collection("seguimiento").document(id_com)
+
+        if com_ref.get().exists:
+            st.error("❌ Ya existe una comisión con ese ID.")
+            st.stop()
+
+        try:
+            # 1. Crear documento en COMISIONES
+            com_ref.set({
+                "Id_Comision": id_com,
+                "Id_Actividad": id_act,
+                "AñoComision": año,
+                "FechaInicio": fecha_ini_str,
+                "FechaFin": fecha_fin_str,
+                "EstadoComision": estado,
+                "Vacantes": vacantes,
+                "Aprobados": aprobados
+            })
+
+            # 2. Crear documento en SEGUIMIENTO con todos los pasos en False + _user/_timestamp
+            pasos_campus = [
+                "C_ArmadoAula", "C_Matriculacion", "C_AperturaCurso", "C_CierreCurso", "C_AsistenciaEvaluacion"
+            ]
+            pasos_dictado = [
+                "D_Difusion", "D_AsignacionVacantes", "D_Cursada", "D_AsistenciaEvaluacion", "D_CreditosSAI", 
+            ]
+            seguimiento_data = {"Id_Comision": id_com}
+            for paso in pasos_campus + pasos_dictado:
+                seguimiento_data[paso] = False
+                seguimiento_data[f"{paso}_user"] = ""
+                seguimiento_data[f"{paso}_timestamp"] = ""
+
+            seg_ref.set(seguimiento_data)
+
+            st.success(f"✅ Comisión '{id_com}' creada correctamente.")
+        except Exception as e:
+            st.error(f"❌ Error al crear la comisión: {e}")
+
