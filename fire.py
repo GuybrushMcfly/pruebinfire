@@ -168,10 +168,28 @@ with tab3:
         act_sel = st.selectbox("Actividad asociada:", sorted(actividades_dict.keys()))
         fecha_ini = st.date_input("Fecha de inicio")
         fecha_fin = st.date_input("Fecha de finalización")
-        estado = st.selectbox("Estado de la comisión")
         vacantes = st.number_input("Vacantes", min_value=0, value=0)
         aprobados = st.number_input("Aprobados", min_value=0, value=0)
         crear = st.form_submit_button("🚀 Crear comisión")
+
+    if crear:
+        if not id_com:
+            st.warning("🟡 Ingresá un ID para la comisión.")
+            st.stop()
+
+        id_act = actividades_dict[act_sel]
+        año = fecha_ini.year
+        fecha_ini_str = fecha_ini.strftime("%Y-%m-%d")
+        fecha_fin_str = fecha_fin.strftime("%Y-%m-%d")
+
+        # 👉 Cálculo automático del estado
+        hoy = datetime.today().date()
+        if hoy < fecha_ini:
+            estado = "PENDIENTE"
+        elif hoy > fecha_fin:
+            estado = "FINALIZADA"
+        else:
+            estado = "CURSANDO"
 
     if crear:
         if not id_com:
