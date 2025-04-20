@@ -57,15 +57,20 @@ with tab1:
     iconos = {"finalizado": "✓", "actual": "⏳", "pendiente": "⚪"}
 
     def mostrar_stepper(pasos, datos, editable=False, doc_ref=None, suffix=""):
-        temp_estado = {col: datos.get(col, False) for col, _ in pasos}
+        temp_estado = {}
+        for col, _ in pasos:
+            temp_estado[col] = datos.get(col, False)
+
         bools = [temp_estado[col] for col, _ in pasos]
         idx = len(bools) if all(bools) else next((i for i, v in enumerate(bools) if not v), 0)
 
         fig = go.Figure(); x, y = list(range(len(pasos))), 1
+
         for i in range(len(pasos)-1):
             clr = colores["ok"] if i < idx else colores["no"]
             fig.add_trace(go.Scatter(x=[x[i], x[i+1]], y=[y, y], mode="lines",
                                      line=dict(color=clr, width=8), showlegend=False))
+
         for i, (col, label) in enumerate(pasos):
             estado = temp_estado[col]
             if estado: clr, ic = colores["ok"], iconos["finalizado"]
@@ -74,83 +79,106 @@ with tab1:
             fig.add_trace(go.Scatter(x=[x[i]], y=[y], mode="markers+text",
                                      marker=dict(size=45, color=clr),
                                      text=[ic], textposition="middle center",
-                                     textfont=dict(color="white", size=18), hoverinfo="none", showlegend=False))
+                                     textfont=dict(color="white", size=18),
+                                     hovertext=[label], hoverinfo="text", showlegend=False))
             fig.add_trace(go.Scatter(x=[x[i]], y=[y-0.2], mode="text",
                                      text=[label], textposition="bottom center",
                                      textfont=dict(color="white", size=16), showlegend=False))
 
         fig.update_layout(xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                          yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0.3,1.2]),
-                          height=160, margin=dict(l=20,r=20,t=30,b=0))
+                          yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0.3, 1.2]),
+                          height=160, margin=dict(l=20, r=20, t=30, b=0))
         st.plotly_chart(fig, config={"displayModeBar": False})
 
         if editable:
             exp_key = f"exp_{suffix}"
             if exp_key not in st.session_state:
                 st.session_state[exp_key] = False
+
             if st.button(f"🛠️ Editar {suffix.capitalize()}", key=f"btn_toggle_{suffix}"):
                 st.session_state[exp_key] = not st.session_state[exp_key]
+
             if st.session_state[exp_key]:
                 with st.expander("Editar estado", expanded=True):
-                    cambios = {col: st.checkbox(label, value=temp_estado[col], key=f"edit_{suffix}_{col}") for col, label in pasos}
+                    cambios = {}
+                    for col, label in pasos:
+                        cambios[col] = st.checkbox(label, value=temp_estado[col], key=f"edit_{suffix}_{col}")
                     if st.button("💾 Actualizar estado", key=f"btn_update_{suffix}"):
-                        for i,(col,lab) in enumerate(pasos):
-                            if cambios[col] and not all(cambios[pasos[j][0]] for j in range(i)):
-                                st.error(f"❌ No se puede marcar '{lab}' sin completar pasos anteriores.")
-                                st.stop()
-                        update_data = {}
-                        now = datetime.utcnow().isoformat()
-                        for col in cambios:
-                            if cambios[col] != datos.get(col, False):
-                                update_data[col] = cambios[col]
-                                update_data[f"{col}_user"] = st.session_state.get("name","Anónimo")
-                                update_data[f"{col}_timestamp"] = now
-                        if update_data:
-                            try:
+                        for i in range(len(pasos)):
+                            col = pasos[i][0]
+                            if cambios[col]:
+                                anteriores = [cambios[pasos[j][0]] for j in range(i)]
+                                if not all(anteriores):
+                                    st.error(f"❌ No se puede marcar '{pasos[i][1]}' sin completar pasos anteriores.")
+                                    st.stop()
+                        try:
+                            now = datetime.utcnow().isoformat()
+                            update_data = {}
+                            for col in cambios:
+                                if cambios[col] != datos.get(col, False):
+                                    update_data[col] = cambios[col]
+                                    update_data[f"{col}_user"] = st.session_state.get("name", "Anónimo")
+                                    update_data[f"{col}_timestamp"] = now
+                            if update_data:
                                 doc_ref.update(update_data)
                                 st.success("✅ Datos actualizados correctamente")
-                                st.session_state[exp_key]=False
-                                st.experimental_rerun()
-                            except Exception as e:
-                                st.error(f"Error al actualizar: {e}")
-                        else:
-                            st.info("No hubo cambios para guardar.")
+                                st.session_state[exp_key] = False
+                                st.rerun()
+                            else:
+                                st.info("No hubo cambios para guardar.")
+                        except Exception as e:
+                            st.error(f"Error al actualizar: {e}")
 
     # Cargar actividades
     actividades = db.collection("actividades").stream()
-    actividades_dict = {doc.to_dict().get("NombreActividad"): doc.id for doc in actividades if doc.to_dict().get("NombreActividad")}
+    actividades_dict = {}
+    for doc in actividades:
+        data = doc.to_dict()
+        if "NombreActividad" in data:
+            actividades_dict[data["NombreActividad"]] = doc.id
 
-    # Búsqueda de actividad por texto (mín.3 letras)
-    actividad_input = st.text_input("🔍 Buscar actividad (mín.3 letras):")
+    if not actividades_dict:
+        st.warning("⚠️ No hay actividades registradas.")
+        st.stop()
+
+    actividad_input = st.text_input("🔍 Buscar actividad (escribí parte del nombre):")
+    coincidencias = [k for k in actividades_dict if actividad_input.lower() in k.lower()] if actividad_input else []
+
     actividad_sel = None
-    if actividad_input and len(actividad_input)>=3:
-        actividad_match = [k for k in actividades_dict if actividad_input.lower() in k.lower()]
-        actividad_sel = st.selectbox("Coincidencias:", actividad_match) if actividad_match else None
-
-    if actividad_sel:
+    if coincidencias:
+        actividad_sel = st.selectbox("Coincidencias:", coincidencias)
         id_act = actividades_dict[actividad_sel]
-        doc_act = db.collection("actividades").document(id_act)
-        datos_act = doc_act.get().to_dict()
+        doc_ref = db.collection("actividades").document(id_act)
+        datos_act = doc_ref.get().to_dict()
 
         st.markdown("### 🔹 Actividad")
-        mostrar_stepper(pasos_act, datos_act, True, doc_act, "act")
+        mostrar_stepper(pasos_act, datos_act, editable=True, doc_ref=doc_ref, suffix="act")
 
-        coms = db.collection("comisiones").where("Id_Actividad","==",id_act).stream()
-        com_dict = {d.id:d.to_dict() for d in coms}
-        if not com_dict:
-            st.warning("🔸 Esta actividad no tiene comisiones.")
-        else:
-            com_id = st.selectbox("Seleccioná una comisión:",sorted(com_dict.keys()))
-            seg_ref = db.collection("seguimiento").document(com_id)
-            seg = seg_ref.get()
-            if not seg.exists:
-                st.warning("⚠️ Sin seguimiento aún.")
-            else:
-                datos_seg = seg.to_dict()
-                st.markdown("### 🔹 Campus Virtual")
-                mostrar_stepper(pasos_campus, datos_seg, True, seg_ref, "campus")
-                st.markdown("### 🔹 Dictado")
-                mostrar_stepper(pasos_dictado, datos_seg, True, seg_ref, "dictado")
+        comisiones = db.collection("comisiones").where("Id_Actividad", "==", id_act).stream()
+        comisiones_dict = {doc.id: doc.to_dict() for doc in comisiones}
+
+        if not comisiones_dict:
+            st.warning("🔸 Esta actividad no tiene comisiones registradas aún.")
+            st.stop()
+
+        com_id = st.selectbox("Seleccioná una comisión:", sorted(comisiones_dict.keys()))
+
+        seguimiento_ref = db.collection("seguimiento").document(com_id)
+        seguimiento_doc = seguimiento_ref.get()
+        if not seguimiento_doc.exists:
+            st.warning("⚠️ No hay datos de seguimiento para esta comisión.")
+            st.stop()
+
+        datos_seg = seguimiento_doc.to_dict()
+
+        st.markdown("### 🔹 Campus Virtual")
+        mostrar_stepper(pasos_campus, datos_seg, editable=True, doc_ref=seguimiento_ref, suffix="campus")
+
+        st.markdown("### 🔹 Dictado")
+        mostrar_stepper(pasos_dictado, datos_seg, editable=True, doc_ref=seguimiento_ref, suffix="dictado")
+    else:
+        st.info("⌨️ Escribí para buscar una actividad.")
+
 
 # ─────────────────────────────────────────────────────────────
 # ➕ TAB 2: CREAR NUEVA ACTIVIDAD
