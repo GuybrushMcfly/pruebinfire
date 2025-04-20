@@ -279,8 +279,15 @@ with tab4:
     # 3. Formulario de edición
     with st.form("form_editar_comision"):
         st.subheader(f"✏️ Editar comisión: {com_id_sel}")
-        f_ini = st.date_input("Fecha de inicio", value=datetime.strptime(com_data["FechaInicio"], "%d/%m/%Y").date())
-        f_fin = st.date_input("Fecha de finalización", value=datetime.strptime(com_data["FechaFin"], "%d/%m/%Y").date())
+        f_ini = datetime.strptime(com_data["FechaInicio"], "%Y-%m-%d").date()
+        f_fin = datetime.strptime(com_data["FechaFin"], "%Y-%m-%d").date()
+        
+        st.caption(f"📅 Fecha de inicio (dd/mm/yyyy): {f_ini.strftime('%d/%m/%Y')}")
+        f_ini = st.date_input("Fecha de inicio", value=f_ini)
+        
+        st.caption(f"📅 Fecha de finalización (dd/mm/yyyy): {f_fin.strftime('%d/%m/%Y')}")
+        f_fin = st.date_input("Fecha de finalización", value=f_fin)
+
 
         vac = st.number_input("Vacantes", value=com_data.get("Vacantes", 0), min_value=0)
         apr = st.number_input("Aprobados", value=com_data.get("Aprobados", 0), min_value=0)
