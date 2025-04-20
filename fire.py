@@ -142,7 +142,13 @@ with tab1:
         st.stop()
 
     actividades_nombres = sorted(actividades_dict.keys())
-    actividad_sel = st.selectbox("🔍 Buscar y seleccionar actividad:", actividades_nombres, key="actividad_search")
+    actividad_sel = st.selectbox(
+    "🔍 Buscar y seleccionar actividad:",
+    [""] + actividades_nombres,
+    index=0,
+    key="actividad_search"
+)
+    
 
     if actividad_sel:
         id_act = actividades_dict[actividad_sel]
