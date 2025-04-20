@@ -26,9 +26,6 @@ tab1, tab2, tab3, tab4 = st.tabs([
 # ─────────────────────────────────────────────────────────────
 # 📋 TAB 1: VER ACTIVIDAD + SEGUIMIENTO
 # ─────────────────────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────
-# 📋 TAB 1: VER ACTIVIDAD + SEGUIMIENTO
-# ─────────────────────────────────────────────────────────────
 with tab1:
     st.title("📋 Estado de Aprobación y Seguimiento")
 
@@ -95,7 +92,7 @@ with tab1:
         st.plotly_chart(fig, config={"displayModeBar": False})
 
         if editable:
-            with st.expander("🛠️ Editar estado"):
+            with st.expander("🛠️ Editar estado", expanded=True) as exp:
                 cambios = {}
                 for col, label in pasos:
                     cambios[col] = st.checkbox(label, value=temp_estado[col], key=f"edit_{suffix}_{col}")
@@ -118,7 +115,7 @@ with tab1:
                         if update_data:
                             doc_ref.update(update_data)
                             st.success("✅ Datos actualizados correctamente")
-                            st.rerun()
+                            st.experimental_rerun()
                         else:
                             st.info("No hubo cambios para guardar.")
                     except Exception as e:
@@ -168,6 +165,7 @@ with tab1:
 
     st.markdown("### 🔹 Dictado")
     mostrar_stepper(pasos_dictado, datos_seg, editable=True, doc_ref=seguimiento_ref, suffix="dictado")
+
 
 
 
