@@ -192,8 +192,8 @@ with tab3:
 
         id_act = actividades_dict[act_sel]
         año = fecha_ini.year
-        fecha_ini_str = fecha_ini.strftime("%Y-%m-%d")
-        fecha_fin_str = fecha_fin.strftime("%Y-%m-%d")
+        fecha_ini_str = fecha_ini.strftime("%d/%m/%Y")
+        fecha_fin_str = fecha_fin.strftime("%d/%m/%Y")
 
         hoy = datetime.today().date()
         if hoy < fecha_ini:
