@@ -203,8 +203,11 @@ with tab3:
         else:
             estado = "CURSANDO"
 
-        fecha_ini_str = fecha_ini.strftime("%d/%m/%Y")
-        fecha_fin_str = fecha_fin.strftime("%d/%m/%Y")
+        if st.session_state["fecha_inicio_comision"]:
+            st.caption(f"📅 Fecha de inicio (dd/mm/yyyy): {st.session_state['fecha_inicio_comision'].strftime('%d/%m/%Y')}")
+       
+        if st.session_state["fecha_fin_comision"]:
+            st.caption(f"📅 Fecha de finalización (dd/mm/yyyy): {st.session_state['fecha_fin_comision'].strftime('%d/%m/%Y')}")
 
         com_ref = db.collection("comisiones").document(id_com)
         seg_ref = db.collection("seguimiento").document(id_com)
