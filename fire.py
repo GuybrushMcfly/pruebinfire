@@ -23,13 +23,12 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "🛠️ Editar comisiones"
 ])
 
-# ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────
 # 📋 TAB 1: VER ACTIVIDAD + SEGUIMIENTO
-# ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────
 with tab1:
     st.title("📋 Estado de Aprobación y Seguimiento")
 
-    # Pasos de actividad
     pasos_act = [
         ("A_Diseño", "Diseño"),
         ("A_AutorizacionINAP", "Autorización INAP"),
@@ -92,34 +91,43 @@ with tab1:
         st.plotly_chart(fig, config={"displayModeBar": False})
 
         if editable:
-            with st.expander("🛠️ Editar estado", expanded=True) as exp:
-                cambios = {}
-                for col, label in pasos:
-                    cambios[col] = st.checkbox(label, value=temp_estado[col], key=f"edit_{suffix}_{col}")
-                if st.button("💾 Actualizar estado", key=f"btn_update_{suffix}"):
-                    for i in range(len(pasos)):
-                        col = pasos[i][0]
-                        if cambios[col]:
-                            anteriores = [cambios[pasos[j][0]] for j in range(i)]
-                            if not all(anteriores):
-                                st.error(f"❌ No se puede marcar '{pasos[i][1]}' sin completar pasos anteriores.")
-                                st.stop()
-                    try:
-                        now = datetime.utcnow().isoformat()
-                        update_data = {}
-                        for col in cambios:
-                            if cambios[col] != datos.get(col, False):
-                                update_data[col] = cambios[col]
-                                update_data[f"{col}_user"] = st.session_state.get("name", "Anónimo")
-                                update_data[f"{col}_timestamp"] = now
-                        if update_data:
-                            doc_ref.update(update_data)
-                            st.success("✅ Datos actualizados correctamente")
-                            st.experimental_rerun()
-                        else:
-                            st.info("No hubo cambios para guardar.")
-                    except Exception as e:
-                        st.error(f"Error al actualizar: {e}")
+            exp_key = f"exp_{suffix}"
+            if exp_key not in st.session_state:
+                st.session_state[exp_key] = False
+
+            if st.button(f"🛠️ Editar {suffix.capitalize()}", key=f"btn_toggle_{suffix}"):
+                st.session_state[exp_key] = not st.session_state[exp_key]
+
+            if st.session_state[exp_key]:
+                with st.expander("Editar estado", expanded=True):
+                    cambios = {}
+                    for col, label in pasos:
+                        cambios[col] = st.checkbox(label, value=temp_estado[col], key=f"edit_{suffix}_{col}")
+                    if st.button("💾 Actualizar estado", key=f"btn_update_{suffix}"):
+                        for i in range(len(pasos)):
+                            col = pasos[i][0]
+                            if cambios[col]:
+                                anteriores = [cambios[pasos[j][0]] for j in range(i)]
+                                if not all(anteriores):
+                                    st.error(f"❌ No se puede marcar '{pasos[i][1]}' sin completar pasos anteriores.")
+                                    st.stop()
+                        try:
+                            now = datetime.utcnow().isoformat()
+                            update_data = {}
+                            for col in cambios:
+                                if cambios[col] != datos.get(col, False):
+                                    update_data[col] = cambios[col]
+                                    update_data[f"{col}_user"] = st.session_state.get("name", "Anónimo")
+                                    update_data[f"{col}_timestamp"] = now
+                            if update_data:
+                                doc_ref.update(update_data)
+                                st.success("✅ Datos actualizados correctamente")
+                                st.session_state[exp_key] = False
+                                st.rerun()
+                            else:
+                                st.info("No hubo cambios para guardar.")
+                        except Exception as e:
+                            st.error(f"Error al actualizar: {e}")
 
     # Cargar actividades
     actividades = db.collection("actividades").stream()
@@ -141,7 +149,6 @@ with tab1:
     st.markdown("### 🔹 Actividad")
     mostrar_stepper(pasos_act, datos_act, editable=True, doc_ref=doc_ref, suffix="act")
 
-    # Comisiones de esa actividad
     comisiones = db.collection("comisiones").where("Id_Actividad", "==", id_act).stream()
     comisiones_dict = {doc.id: doc.to_dict() for doc in comisiones}
 
@@ -151,7 +158,6 @@ with tab1:
 
     com_id = st.selectbox("Seleccioná una comisión:", sorted(comisiones_dict.keys()))
 
-    # Datos de seguimiento
     seguimiento_ref = db.collection("seguimiento").document(com_id)
     seguimiento_doc = seguimiento_ref.get()
     if not seguimiento_doc.exists:
@@ -165,7 +171,6 @@ with tab1:
 
     st.markdown("### 🔹 Dictado")
     mostrar_stepper(pasos_dictado, datos_seg, editable=True, doc_ref=seguimiento_ref, suffix="dictado")
-
 
 
 
