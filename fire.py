@@ -2,6 +2,7 @@ import json
 import firebase_admin
 from firebase_admin import credentials, firestore
 import streamlit as st
+import plotly.graph_objects as go
 
 creds_dict = json.loads(st.secrets["GOOGLE_FIREBASE_CREDS"])
 cred = credentials.Certificate(creds_dict)
