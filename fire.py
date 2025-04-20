@@ -246,8 +246,7 @@ with tab3:
             st.session_state.pop("comision_vacantes", None)
             st.session_state.pop("comision_aprobados", None)
 
-            st.experimental_rerun()
-
+            st.rerun()
         except Exception as e:
             st.error(f"❌ Error al crear la comisión: {e}")
 
