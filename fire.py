@@ -15,14 +15,14 @@ db = firestore.client()
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Gestión Actividades", layout="wide")
 
-# --- TABS ---
+# --- TABS PRINCIPALES ---
 tab1, tab2 = st.tabs(["📋 Ver actividad", "➕ Crear nueva actividad"])
 
 # ─────────────────────────────────────────────────────────────
 # 📋 TAB 1: VER ACTIVIDAD
 # ─────────────────────────────────────────────────────────────
 with tab1:
-    st.title("📋 Estado de Aprobación - Curso HTML Y CSS")
+    st.title("📋 Estado de Aprobación")
 
     pasos = [
         ("A_Diseño", "Diseño"),
@@ -32,9 +32,24 @@ with tab1:
         ("A_DictamenINAP", "Dictamen INAP"),
     ]
 
-    doc_ref = db.collection("actividades").document("JU-HTML")
+    # Obtener lista de actividades
+    actividades = db.collection("actividades").stream()
+    actividades_dict = {}
+    for doc in actividades:
+        data = doc.to_dict()
+        if "NombreActividad" in data:
+            actividades_dict[data["NombreActividad"]] = doc.id
+
+    if not actividades_dict:
+        st.warning("⚠️ No hay actividades registradas.")
+        st.stop()
+
+    curso = st.selectbox("Seleccioná una actividad:", sorted(actividades_dict.keys()))
+    id_act = actividades_dict[curso]
+    doc_ref = db.collection("actividades").document(id_act)
     doc_data = doc_ref.get().to_dict()
 
+    # Stepper visual
     bools = [doc_data.get(col, False) for col, _ in pasos]
     idx = len(bools) if all(bools) else next(i for i, v in enumerate(bools) if not v)
     fig = go.Figure(); x, y = list(range(len(pasos))), 1
@@ -65,6 +80,7 @@ with tab1:
                       height=160, margin=dict(l=20, r=20, t=30, b=0))
     st.plotly_chart(fig, config={"displayModeBar": False})
 
+    # Formulario para modificar
     with st.form("form_aprobacion"):
         usuario = st.text_input("Tu nombre (para registrar cambios)", value="Anónimo")
         temp_estado = {}
@@ -107,7 +123,6 @@ with tab2:
         nuevo_id = st.text_input("ID de la actividad (ej. JU-NUEVA)")
         nombre = st.text_input("Nombre de la actividad")
         area = st.text_input("Área temática", value="")
-
         enviar = st.form_submit_button("🚀 Crear actividad")
 
     if enviar:
