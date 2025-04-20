@@ -309,7 +309,7 @@ with tab4:
                 "EstadoComision": estado
             })
             st.success("✅ Comisión actualizada correctamente")
-            st.experimental_rerun()
+       #     st.experimental_rerun()
         except Exception as e:
             st.error(f"❌ Error al actualizar: {e}")
 
