@@ -1,13 +1,14 @@
-import streamlit as st
-import plotly.graph_objects as go
+import json
 import firebase_admin
 from firebase_admin import credentials, firestore
+import streamlit as st
 
-# --- INICIALIZACIÓN FIREBASE ---
-if not firebase_admin._apps:
-    cred = credentials.Certificate("firebase-cred.json")
-    firebase_admin.initialize_app(cred)
+creds_dict = json.loads(st.secrets["GOOGLE_FIREBASE_CREDS"])
+cred = credentials.Certificate(creds_dict)
+firebase_admin.initialize_app(cred)
 db = firestore.client()
+
+
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Stepper desde Firebase", layout="wide")
