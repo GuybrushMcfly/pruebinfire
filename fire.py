@@ -247,10 +247,9 @@ with tab3:
             st.error(f"❌ Error al crear la comisión: {e}")
 
         # Limpiar formulario tras creación
-        for key in st.session_state.keys():
-            if key.startswith("form_crear_comision"):
-                st.session_state[key] = None
-        st.experimental_rerun()
+        # Limpiar campos manualmente sin usar st.experimental_rerun
+        st.session_state.clear()
+
 
 # ─────────────────────────────────────────────────────────────
 # 🛠️ TAB 4: EDITAR COMISIONES EXISTENTES
