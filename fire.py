@@ -183,8 +183,6 @@ with tab3:
         act_sel = st.selectbox("Actividad asociada:", sorted(actividades_dict.keys()), key="actividad_comision")
         fecha_ini = st.date_input("Fecha de inicio", key="fecha_inicio_comision")
         fecha_fin = st.date_input("Fecha de finalización", key="fecha_fin_comision")
-        vacantes = st.number_input("Vacantes", min_value=0, value=st.session_state["vacantes_comision"], key="vacantes_comision")
-        aprobados = st.number_input("Aprobados", min_value=0, value=st.session_state["aprobados_comision"], key="aprobados_comision")
         crear = st.form_submit_button("🚀 Crear comisión")
 
     if crear:
@@ -194,7 +192,7 @@ with tab3:
 
         id_act = actividades_dict[act_sel]
         año = fecha_ini.year
-        fecha_ini_str = fecha_ini.strftime("%Y-%m-%d")
+        fecha_ini_str = fecha_ini.strftime("%d-%m-%Y")
         fecha_fin_str = fecha_fin.strftime("%Y-%m-%d")
 
         hoy = datetime.today().date()
@@ -220,8 +218,8 @@ with tab3:
                 "FechaInicio": fecha_ini_str,
                 "FechaFin": fecha_fin_str,
                 "EstadoComision": estado,
-                "Vacantes": vacantes,
-                "Aprobados": aprobados
+         #       "Vacantes": vacantes,
+         #       "Aprobados": aprobados
             })
 
             pasos_campus = [
