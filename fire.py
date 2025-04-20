@@ -212,85 +212,142 @@ with tab2:
 # ─────────────────────────────────────────────────────────────
 with tab3:
     st.title("➕ Crear nueva comisión")
-    activs = db.collection("actividades").stream()
-    act_dict = {d.to_dict().get("NombreActividad"):d.id for d in activs if d.to_dict().get("NombreActividad")}
-    if not act_dict:
-        st.warning("⚠️ Crea una actividad primero.")
+
+    actividades = db.collection("actividades").stream()
+    actividades_dict = {}
+    for doc in actividades:
+        data = doc.to_dict()
+        if "NombreActividad" in data:
+            actividades_dict[data["NombreActividad"]] = doc.id
+
+    if not actividades_dict:
+        st.warning("⚠️ No hay actividades disponibles. Creá una actividad primero.")
         st.stop()
-    # Selector de actividad (dropdown)
-    act_sel = st.selectbox("Actividad asociada:",sorted(act_dict.keys()))
-    if act_sel:
-        if st.session_state.get("reset_comision",True):
-            st.session_state.update({"id_comision":"","fecha_inicio_comision":None,"fecha_fin_comision":None,"reset_comision":False})
-        with st.form("form_crear_comision"):
-            id_com = st.text_input("ID de la comisión (ej. JU-HTML-01)",key="id_comision")
-            fecha_ini = st.date_input("Fecha de inicio",key="fecha_inicio_comision")
-            fecha_fin = st.date_input("Fecha de finalización",key="fecha_fin_comision")
-            crear = st.form_submit_button("🚀 Crear comisión")
-        if crear:
-            if not id_com:
-                st.warning("🟡 ID requerido.")
-                st.stop()
-            if fecha_ini>fecha_fin:
-                st.error("�?❌ Fecha inicio posterior a fin.")
-                st.stop()
-            año=fecha_ini.year; hoy=datetime.today().date()
-            estado = "PENDIENTE" if hoy<fecha_ini else "FINALIZADA" if hoy>fecha_fin else "CURSANDO"
-            com_ref=db.collection("comisiones").document(id_com)
-            seg_ref=db.collection("seguimiento").document(id_com)
-            if com_ref.get().exists:
-                st.error("❌ Comisión existe.")
-                st.stop()
-            try:
-                com_ref.set({"Id_Comision":id_com,"Id_Actividad":act_dict[act_sel],
-                             "AñoComision":año,"FechaInicio":fecha_ini.strftime("%d/%m/%Y"),
-                             "FechaFin":fecha_fin.strftime("%d/%m/%Y"),"EstadoComision":estado})
-                pasos=["C_ArmadoAula","C_Matriculacion","C_AperturaCurso","C_CierreCurso","C_AsistenciaEvaluacion",
-                       "D_Difusion","D_AsignacionVacantes","D_Cursada","D_AsistenciaEvaluacion","D_CreditosSAI"]
-                seg_data={"Id_Comision":id_com}
-                for p in pasos: seg_data[p]=False; seg_data[f"{p}_user"]=""; seg_data[f"{p}_timestamp"]=""
-                seg_ref.set(seg_data)
-                st.success(f"✅ Comisión '{id_com}' creada.")
-                st.session_state["reset_comision"]=True
-            except Exception as e:
-                st.error(f"❌ Error: {e}")
+
+    if st.session_state.get("reset_comision", True):
+        st.session_state["id_comision"] = ""
+        st.session_state["actividad_comision"] = ""
+        st.session_state["fecha_inicio_comision"] = None
+        st.session_state["fecha_fin_comision"] = None
+        st.session_state["reset_comision"] = False
+
+    actividades_nombres = sorted(actividades_dict.keys())
+
+    with st.form("form_crear_comision"):
+        id_com = st.text_input("ID de la comisión (ej. JU-HTML-01)", key="id_comision")
+        act_sel = st.selectbox("Actividad asociada:", [""] + actividades_nombres, index=0, key="actividad_comision")
+        fecha_ini = st.date_input("Fecha de inicio", key="fecha_inicio_comision")
+        fecha_fin = st.date_input("Fecha de finalización", key="fecha_fin_comision")
+        crear = st.form_submit_button("🚀 Crear comisión")
+
+    if crear:
+        if not id_com or not act_sel:
+            st.warning("🟡 Completá todos los campos obligatorios.")
+            st.stop()
+
+        if fecha_ini > fecha_fin:
+            st.error("❌ La fecha de inicio no puede ser posterior a la fecha de finalización.")
+            st.stop()
+
+        id_act = actividades_dict[act_sel]
+        año = fecha_ini.year
+
+        hoy = datetime.today().date()
+        estado = "PENDIENTE" if hoy < fecha_ini else "FINALIZADA" if hoy > fecha_fin else "CURSANDO"
+
+        fecha_ini_str = fecha_ini.strftime("%d/%m/%Y")
+        fecha_fin_str = fecha_fin.strftime("%d/%m/%Y")
+
+        com_ref = db.collection("comisiones").document(id_com)
+        seg_ref = db.collection("seguimiento").document(id_com)
+
+        if com_ref.get().exists:
+            st.error("❌ Ya existe una comisión con ese ID.")
+            st.stop()
+
+        try:
+            com_ref.set({
+                "Id_Comision": id_com,
+                "Id_Actividad": id_act,
+                "AñoComision": año,
+                "FechaInicio": fecha_ini_str,
+                "FechaFin": fecha_fin_str,
+                "EstadoComision": estado
+            })
+
+            pasos = ["C_ArmadoAula", "C_Matriculacion", "C_AperturaCurso", "C_CierreCurso", "C_AsistenciaEvaluacion",
+                     "D_Difusion", "D_AsignacionVacantes", "D_Cursada", "D_AsistenciaEvaluacion", "D_CreditosSAI"]
+            seguimiento_data = {"Id_Comision": id_com}
+            for paso in pasos:
+                seguimiento_data[paso] = False
+                seguimiento_data[f"{paso}_user"] = ""
+                seguimiento_data[f"{paso}_timestamp"] = ""
+
+            seg_ref.set(seguimiento_data)
+
+            st.success(f"✅ Comisión '{id_com}' creada correctamente.")
+            st.session_state["reset_comision"] = True
+
+        except Exception as e:
+            st.error(f"❌ Error al crear la comisión: {e}")
+
 
 # ─────────────────────────────────────────────────────────────
 # 🛠️ TAB 4: EDITAR COMISIONES EXISTENTES
 # ─────────────────────────────────────────────────────────────
 with tab4:
     st.title("🛠️ Editar comisiones existentes")
-    coms=db.collection("comisiones").stream()
-    com_list=[c.to_dict() for c in coms]
-    if not com_list:
-        st.warning("Sin comisiones."); st.stop()
-    activs=db.collection("actividades").stream()
-    act_dict={d.id:d.to_dict().get("NombreActividad",d.id) for d in activs}
-    # Selector de actividad
-    actividad = st.selectbox("Filtrar actividad:", sorted(act_dict.values()))
-    id_act = next(k for k,v in act_dict.items() if v == actividad)
-    filt=[c for c in com_list if c["Id_Actividad"]==id_act]
-    if not filt:
-        st.warning("Sin comisiones."); st.stop()
-    sel = st.selectbox("Selecciona comisión:",[c["Id_Comision"] for c in filt])
-    data = next(c for c in filt if c["Id_Comision"]==sel)
+
+    coms_raw = db.collection("comisiones").stream()
+    comisiones = [doc.to_dict() for doc in coms_raw]
+    if not comisiones:
+        st.warning("No hay comisiones cargadas.")
+        st.stop()
+
+    actividades = db.collection("actividades").stream()
+    actividades_dict = {doc.id: doc.to_dict().get("NombreActividad", doc.id) for doc in actividades}
+    id_to_nombre = {v: k for k, v in actividades_dict.items()}
+
+    actividades_nombres = sorted(actividades_dict.values())
+    nombre_sel = st.selectbox("🔍 Filtrar por actividad:", [""] + actividades_nombres, index=0, key="actividad_filtro")
+
+    if not nombre_sel:
+        st.info("Seleccioná una actividad para ver sus comisiones.")
+        st.stop()
+
+    id_actividad = id_to_nombre[nombre_sel]
+    coms_filtradas = [c for c in comisiones if c["Id_Actividad"] == id_actividad]
+
+    if not coms_filtradas:
+        st.warning("No hay comisiones para esta actividad.")
+        st.stop()
+
+    com_ids = [c["Id_Comision"] for c in coms_filtradas]
+    com_id_sel = st.selectbox("🔍 Seleccioná una comisión:", com_ids)
+    com_data = next(c for c in coms_filtradas if c["Id_Comision"] == com_id_sel)
+
     with st.form("form_editar_comision"):
-        st.subheader(f"✏️ Editar comisión: {sel}")
-        f_ini = datetime.strptime(data["FechaInicio"], "%d/%m/%Y").date()
-        f_fin = datetime.strptime(data["FechaFin"], "%d/%m/%Y").date()
-        f_ini=st.date_input("Fecha de inicio", value=f_ini)
-        f_fin=st.date_input("Fecha de finalización", value=f_fin)
-        vac = st.number_input("Vacantes", value=data.get("Vacantes",0), min_value=0)
-        apr = st.number_input("Aprobados", value=data.get("Aprobados",0), min_value=0)
+        st.subheader(f"✏️ Editar comisión: {com_id_sel}")
+        f_ini = datetime.strptime(com_data["FechaInicio"], "%d/%m/%Y").date()
+        f_fin = datetime.strptime(com_data["FechaFin"], "%d/%m/%Y").date()
+        f_ini = st.date_input("Fecha de inicio", value=f_ini)
+        f_fin = st.date_input("Fecha de finalización", value=f_fin)
+        vac = st.number_input("Vacantes", value=com_data.get("Vacantes", 0), min_value=0)
+        apr = st.number_input("Aprobados", value=com_data.get("Aprobados", 0), min_value=0)
         guardar = st.form_submit_button("💾 Actualizar comisión")
+
     if guardar:
         hoy = datetime.today().date()
-        estado="PENDIENTE" if hoy<f_ini else "FINALIZADA" if hoy>f_fin else "CURSANDO"
+        estado = "PENDIENTE" if hoy < f_ini else "FINALIZADA" if hoy > f_fin else "CURSANDO"
         try:
-            db.collection("comisiones").document(sel).update({"FechaInicio":f_ini.strftime("%d/%m/%Y"),
-                                                               "FechaFin":f_fin.strftime("%d/%m/%Y"),
-                                                               "Vacantes":vac, "Aprobados":apr,
-                                                               "EstadoComision":estado})
-            st.success("✅ Comisión actualizada.")
+            db.collection("comisiones").document(com_id_sel).update({
+                "FechaInicio": f_ini.strftime("%d/%m/%Y"),
+                "FechaFin": f_fin.strftime("%d/%m/%Y"),
+                "Vacantes": vac,
+                "Aprobados": apr,
+                "EstadoComision": estado
+            })
+            st.success("✅ Comisión actualizada correctamente")
         except Exception as e:
             st.error(f"❌ Error al actualizar: {e}")
+
