@@ -147,7 +147,6 @@ with tab2:
 # ─────────────────────────────────────────────────────────────
 # ➕ TAB 3: CREAR NUEVA COMISIÓN
 # ─────────────────────────────────────────────────────────────
-tab3 = st.tabs(["➕ Crear comisión"])[0]
 
 with tab3:
     st.title("➕ Crear nueva comisión")
