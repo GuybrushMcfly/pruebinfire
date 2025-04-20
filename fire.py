@@ -3,19 +3,20 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import streamlit as st
 import plotly.graph_objects as go
+from datetime import datetime
 
+# --- INICIALIZACIÓN FIREBASE ---
 creds_dict = json.loads(st.secrets["GOOGLE_FIREBASE_CREDS"])
 cred = credentials.Certificate(creds_dict)
-firebase_admin.initialize_app(cred)
+if not firebase_admin._apps:
+    firebase_admin.initialize_app(cred)
 db = firestore.client()
-
-
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Stepper desde Firebase", layout="wide")
 st.title("📋 Estado de Aprobación - Curso HTML Y CSS")
 
-# --- DEFINIR PASOS ---
+# --- PASOS DEFINIDOS ---
 pasos = [
     ("A_Diseño", "Diseño"),
     ("A_AutorizacionINAP", "Autorización INAP"),
@@ -24,10 +25,11 @@ pasos = [
     ("A_DictamenINAP", "Dictamen INAP"),
 ]
 
+# --- LECTURA DE FIRESTORE ---
 doc_ref = db.collection("actividades").document("JU-HTML")
 doc_data = doc_ref.get().to_dict()
 
-# --- VISUALIZAR BARRA DE PROGRESO ---
+# --- VISUALIZACIÓN STEPPER ---
 bools = [doc_data.get(col, False) for col, _ in pasos]
 idx = len(bools) if all(bools) else next(i for i, v in enumerate(bools) if not v)
 fig = go.Figure(); x, y = list(range(len(pasos))), 1
@@ -60,21 +62,34 @@ st.plotly_chart(fig, config={"displayModeBar": False})
 
 # --- FORMULARIO DE ACTUALIZACIÓN ---
 with st.form("form_aprobacion"):
+    usuario = st.text_input("Tu nombre (para registrar cambios)", value="Anónimo")
     temp_estado = {}
     for col, label in pasos:
         temp_estado[col] = st.checkbox(label, value=doc_data.get(col, False))
     submitted = st.form_submit_button("💾 Actualizar")
 
 if submitted:
-    # Validar orden lógico (no marcar un paso si anteriores están vacíos)
+    # Validar orden lógico
     for i in range(len(pasos)):
         col = pasos[i][0]
         if temp_estado[col] and not all(temp_estado[pasos[j][0]] for j in range(i)):
             st.error(f"❌ No se puede marcar '{pasos[i][1]}' sin completar los anteriores.")
             st.stop()
+
     try:
-        doc_ref.update(temp_estado)
-        st.success("✅ Datos actualizados correctamente")
-        st.rerun()
+        now = datetime.utcnow().isoformat()
+        update_data = {}
+        for col, _ in pasos:
+            if temp_estado[col] != doc_data.get(col, False):  # solo si cambió
+                update_data[col] = temp_estado[col]
+                update_data[f"{col}_user"] = usuario
+                update_data[f"{col}_timestamp"] = now
+
+        if update_data:
+            doc_ref.update(update_data)
+            st.success("✅ Datos actualizados correctamente")
+            st.rerun()
+        else:
+            st.info("No hubo cambios para guardar.")
     except Exception as e:
         st.error(f"Error al actualizar: {e}")
