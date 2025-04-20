@@ -195,7 +195,6 @@ with tab3:
         fecha_ini_str = fecha_ini.strftime("%Y-%m-%d")
         fecha_fin_str = fecha_fin.strftime("%Y-%m-%d")
 
-        # Estado automático
         hoy = datetime.today().date()
         if hoy < fecha_ini:
             estado = "PENDIENTE"
@@ -239,10 +238,15 @@ with tab3:
 
             st.success(f"✅ Comisión '{id_com}' creada correctamente.")
 
-            # Limpiar los valores sin usar rerun
-            for k in [k_id, k_act, k_ini, k_fin, k_vac, k_apr]:
-                if k in st.session_state:
-                    del st.session_state[k]
+            # 👇 Forzar borrado de campos y refresco limpio
+            st.session_state.pop("comision_id", None)
+            st.session_state.pop("comision_act", None)
+            st.session_state.pop("comision_fecha_ini", None)
+            st.session_state.pop("comision_fecha_fin", None)
+            st.session_state.pop("comision_vacantes", None)
+            st.session_state.pop("comision_aprobados", None)
+
+            st.experimental_rerun()
 
         except Exception as e:
             st.error(f"❌ Error al crear la comisión: {e}")
