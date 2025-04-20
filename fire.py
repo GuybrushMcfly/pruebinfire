@@ -91,7 +91,7 @@ with tab1:
         temp_estado = {}
         for col, label in pasos:
             temp_estado[col] = st.checkbox(label, value=doc_data.get(col, False))
-        submitted = st.form_submit_button("💾 Actualizar")
+        submitted = st.form_submit_button("📏 Actualizar")
 
     if submitted:
         for i in range(len(pasos)):
@@ -117,6 +117,52 @@ with tab1:
                 st.info("No hubo cambios para guardar.")
         except Exception as e:
             st.error(f"Error al actualizar: {e}")
+
+    # ▶️ Barras de avance por comisión
+    coms_raw = db.collection("comisiones").stream()
+    comisiones = [doc.to_dict() for doc in coms_raw if doc.to_dict().get("Id_Actividad") == id_act]
+
+    if comisiones:
+        com_ids = [c["Id_Comision"] for c in comisiones]
+        com_id_sel = st.selectbox("Seleccioná una comisión:", com_ids)
+
+        seguimiento_docs = db.collection("seguimiento").where("Id_Comision", "==", com_id_sel).stream()
+        seguimiento = [doc.to_dict() for doc in seguimiento_docs]
+
+        if seguimiento:
+            datos = seguimiento[0]
+
+            pasos_campus = [
+                ("C_ArmadoAula", "Armado Aula"),
+                ("C_Matriculacion", "Matriculación"),
+                ("C_AperturaCurso", "Apertura Curso"),
+                ("C_CierreCurso", "Cierre Curso"),
+                ("C_AsistenciaEvaluacion", "Asistencia Evaluación"),
+            ]
+
+            pasos_dictado = [
+                ("D_Difusion", "Difusión"),
+                ("D_AsignacionVacantes", "Asignación Vacantes"),
+                ("D_Cursada", "Cursada"),
+                ("D_AsistenciaEvaluacion", "Asistencia Evaluación"),
+                ("D_CreditosSAI", "Créditos SAI"),
+            ]
+
+            def contar_completos(pasos):
+                return sum([1 for col, _ in pasos if datos.get(col, False)])
+
+            def barra_avance(titulo, pasos):
+                total = len(pasos)
+                completos = contar_completos(pasos)
+                pct = int((completos / total) * 100)
+                st.markdown(f"**{titulo}:** {completos} de {total} pasos completados")
+                st.progress(pct / 100)
+
+            barra_avance("Avance Campus", pasos_campus)
+            barra_avance("Avance Dictado", pasos_dictado)
+    else:
+        st.info("No hay comisiones para esta actividad.")
+
 
 # ─────────────────────────────────────────────────────────────
 # ➕ TAB 2: CREAR NUEVA ACTIVIDAD
