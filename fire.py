@@ -26,6 +26,9 @@ tab1, tab2, tab3, tab4 = st.tabs([
 # ─────────────────────────────────────────────────────────────
 # 📋 TAB 1: VER ACTIVIDAD + SEGUIMIENTO
 # ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# 📋 TAB 1: VER ACTIVIDAD + SEGUIMIENTO
+# ─────────────────────────────────────────────────────────────
 with tab1:
     st.title("📋 Estado de Aprobación y Seguimiento")
 
@@ -57,9 +60,14 @@ with tab1:
     colores = {"ok": "#4DB6AC", "now": "#FF8A65", "no": "#D3D3D3"}
     iconos = {"finalizado": "✓", "actual": "⏳", "pendiente": "⚪"}
 
-    def mostrar_stepper(pasos, datos):
-        bools = [datos.get(col, False) for col, _ in pasos]
+    def mostrar_stepper(pasos, datos, editable=False, doc_ref=None):
+        temp_estado = {}
+        for col, _ in pasos:
+            temp_estado[col] = datos.get(col, False)
+
+        bools = [temp_estado[col] for col, _ in pasos]
         idx = len(bools) if all(bools) else next((i for i, v in enumerate(bools) if not v), 0)
+
         fig = go.Figure(); x, y = list(range(len(pasos))), 1
 
         for i in range(len(pasos)-1):
@@ -68,7 +76,7 @@ with tab1:
                                      line=dict(color=clr, width=8), showlegend=False))
 
         for i, (col, label) in enumerate(pasos):
-            estado = datos.get(col, False)
+            estado = temp_estado[col]
             if estado: clr, ic = colores["ok"], iconos["finalizado"]
             elif i == idx: clr, ic = colores["now"], iconos["actual"]
             else: clr, ic = colores["no"], iconos["pendiente"]
@@ -85,6 +93,36 @@ with tab1:
                           yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0.3, 1.2]),
                           height=160, margin=dict(l=20, r=20, t=30, b=0))
         st.plotly_chart(fig, config={"displayModeBar": False})
+
+        if editable:
+            with st.expander("🛠️ Editar estado"):
+                cambios = {}
+                for col, label in pasos:
+                    cambios[col] = st.checkbox(label, value=temp_estado[col], key=f"edit_{col}")
+                if st.button("💾 Actualizar estado"):
+                    for i in range(len(pasos)):
+                        col = pasos[i][0]
+                        if cambios[col]:
+                            anteriores = [cambios[pasos[j][0]] for j in range(i)]
+                            if not all(anteriores):
+                                st.error(f"❌ No se puede marcar '{pasos[i][1]}' sin completar pasos anteriores.")
+                                st.stop()
+                    try:
+                        now = datetime.utcnow().isoformat()
+                        update_data = {}
+                        for col in cambios:
+                            if cambios[col] != datos.get(col, False):
+                                update_data[col] = cambios[col]
+                                update_data[f"{col}_user"] = st.session_state.get("name", "Anónimo")
+                                update_data[f"{col}_timestamp"] = now
+                        if update_data:
+                            doc_ref.update(update_data)
+                            st.success("✅ Datos actualizados correctamente")
+                            st.rerun()
+                        else:
+                            st.info("No hubo cambios para guardar.")
+                    except Exception as e:
+                        st.error(f"Error al actualizar: {e}")
 
     # Cargar actividades
     actividades = db.collection("actividades").stream()
@@ -104,7 +142,7 @@ with tab1:
     datos_act = doc_ref.get().to_dict()
 
     st.markdown("### 🔹 Actividad")
-    mostrar_stepper(pasos_act, datos_act)
+    mostrar_stepper(pasos_act, datos_act, editable=True, doc_ref=doc_ref)
 
     # Comisiones de esa actividad
     comisiones = db.collection("comisiones").where("Id_Actividad", "==", id_act).stream()
@@ -117,20 +155,20 @@ with tab1:
     com_id = st.selectbox("Seleccioná una comisión:", sorted(comisiones_dict.keys()))
 
     # Datos de seguimiento
-    seguimiento_doc = db.collection("seguimiento").document(com_id).get()
+    seguimiento_ref = db.collection("seguimiento").document(com_id)
+    seguimiento_doc = seguimiento_ref.get()
     if not seguimiento_doc.exists:
         st.warning("⚠️ No hay datos de seguimiento para esta comisión.")
         st.stop()
 
     datos_seg = seguimiento_doc.to_dict()
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("### 🔹 Campus Virtual")
-        mostrar_stepper(pasos_campus, datos_seg)
-    with col2:
-        st.markdown("### 🔹 Dictado")
-        mostrar_stepper(pasos_dictado, datos_seg)
+    st.markdown("### 🔹 Campus Virtual")
+    mostrar_stepper(pasos_campus, datos_seg, editable=True, doc_ref=seguimiento_ref)
+
+    st.markdown("### 🔹 Dictado")
+    mostrar_stepper(pasos_dictado, datos_seg, editable=True, doc_ref=seguimiento_ref)
+
 
 
 # ─────────────────────────────────────────────────────────────
