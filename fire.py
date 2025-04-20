@@ -137,43 +137,44 @@ with tab1:
         if "NombreActividad" in data:
             actividades_dict[data["NombreActividad"]] = doc.id
 
-    if not actividades_dict:
-        st.warning("⚠️ No hay actividades registradas.")
-        st.stop()
+    # Búsqueda de actividad por texto (mín. 3 letras)
+    actividad_input = st.text_input("🔍 Buscar actividad (mín. 3 letras):")
+    actividad_sel = None
+    actividad_match = [k for k in actividades_dict.keys()
+                       if actividad_input and len(actividad_input) >= 3 and actividad_input.lower() in k.lower()]
+    if actividad_match:
+        actividad_sel = st.selectbox("Coincidencias encontradas:", actividad_match)
 
-    actividad_sel = st.selectbox("Seleccioná una actividad:", sorted(actividades_dict.keys()))
-    id_act = actividades_dict[actividad_sel]
-    doc_ref = db.collection("actividades").document(id_act)
-    datos_act = doc_ref.get().to_dict()
+    if actividad_sel:
+        id_act = actividades_dict[actividad_sel]
+        doc_ref = db.collection("actividades").document(id_act)
+        datos_act = doc_ref.get().to_dict()
 
-    st.markdown("### 🔹 Actividad")
-    mostrar_stepper(pasos_act, datos_act, editable=True, doc_ref=doc_ref, suffix="act")
+        st.markdown("### 🔹 Actividad")
+        mostrar_stepper(pasos_act, datos_act, editable=True, doc_ref=doc_ref, suffix="act")
 
-    comisiones = db.collection("comisiones").where("Id_Actividad", "==", id_act).stream()
-    comisiones_dict = {doc.id: doc.to_dict() for doc in comisiones}
+        comisiones = db.collection("comisiones").where("Id_Actividad", "==", id_act).stream()
+        comisiones_dict = {doc.id: doc.to_dict() for doc in comisiones}
 
-    if not comisiones_dict:
-        st.warning("🔸 Esta actividad no tiene comisiones registradas aún.")
-        st.stop()
+        if not comisiones_dict:
+            st.warning("🔸 Esta actividad no tiene comisiones registradas aún.")
+            st.stop()
 
-    com_id = st.selectbox("Seleccioná una comisión:", sorted(comisiones_dict.keys()))
+        com_id = st.selectbox("Seleccioná una comisión:", sorted(comisiones_dict.keys()))
 
-    seguimiento_ref = db.collection("seguimiento").document(com_id)
-    seguimiento_doc = seguimiento_ref.get()
-    if not seguimiento_doc.exists:
-        st.warning("⚠️ No hay datos de seguimiento para esta comisión.")
-        st.stop()
+        seguimiento_ref = db.collection("seguimiento").document(com_id)
+        seguimiento_doc = seguimiento_ref.get()
+        if not seguimiento_doc.exists:
+            st.warning("⚠️ No hay datos de seguimiento para esta comisión.")
+            st.stop()
 
-    datos_seg = seguimiento_doc.to_dict()
+        datos_seg = seguimiento_doc.to_dict()
 
-    st.markdown("### 🔹 Campus Virtual")
-    mostrar_stepper(pasos_campus, datos_seg, editable=True, doc_ref=seguimiento_ref, suffix="campus")
+        st.markdown("### 🔹 Campus Virtual")
+        mostrar_stepper(pasos_campus, datos_seg, editable=True, doc_ref=seguimiento_ref, suffix="campus")
 
-    st.markdown("### 🔹 Dictado")
-    mostrar_stepper(pasos_dictado, datos_seg, editable=True, doc_ref=seguimiento_ref, suffix="dictado")
-
-
-
+        st.markdown("### 🔹 Dictado")
+        mostrar_stepper(pasos_dictado, datos_seg, editable=True, doc_ref=seguimiento_ref, suffix="dictado")
 
 # ─────────────────────────────────────────────────────────────
 # ➕ TAB 2: CREAR NUEVA ACTIVIDAD
@@ -223,70 +224,77 @@ with tab3:
         st.warning("⚠️ No hay actividades disponibles. Creá una actividad primero.")
         st.stop()
 
-    if st.session_state.get("reset_comision", True):
-        st.session_state["id_comision"] = ""
-        st.session_state["actividad_comision"] = list(actividades_dict.keys())[0]
-        st.session_state["fecha_inicio_comision"] = None
-        st.session_state["fecha_fin_comision"] = None
-        st.session_state["reset_comision"] = False
+    # Búsqueda de actividad por texto (mín. 3 letras)
+    actividad_input_3 = st.text_input("🔍 Buscar actividad para comisión (mín. 3 letras):", key="buscar_act_tab3")
+    actividad_sel_3 = None
+    actividad_match_3 = [k for k in actividades_dict.keys()
+                         if actividad_input_3 and len(actividad_input_3) >= 3 and actividad_input_3.lower() in k.lower()]
+    if actividad_match_3:
+        actividad_sel_3 = st.selectbox("Coincidencias encontradas:", actividad_match_3, key="match_tab3")
 
-    with st.form("form_crear_comision"):
-        id_com = st.text_input("ID de la comisión (ej. JU-HTML-01)", key="id_comision")
-        act_sel = st.selectbox("Actividad asociada:", sorted(actividades_dict.keys()), key="actividad_comision")
-        fecha_ini = st.date_input("Fecha de inicio", key="fecha_inicio_comision")
-        fecha_fin = st.date_input("Fecha de finalización", key="fecha_fin_comision")
-        crear = st.form_submit_button("🚀 Crear comisión")
+    if actividad_sel_3:
+        if st.session_state.get("reset_comision", True):
+            st.session_state["id_comision"] = ""
+            st.session_state["fecha_inicio_comision"] = None
+            st.session_state["fecha_fin_comision"] = None
+            st.session_state["reset_comision"] = False
 
-    if crear:
-        if not id_com:
-            st.warning("🟡 Ingresá un ID para la comisión.")
-            st.stop()
+        with st.form("form_crear_comision"):
+            id_com = st.text_input("ID de la comisión (ej. JU-HTML-01)", key="id_comision")
+            fecha_ini = st.date_input("Fecha de inicio", key="fecha_inicio_comision")
+            fecha_fin = st.date_input("Fecha de finalización", key="fecha_fin_comision")
+            crear = st.form_submit_button("🚀 Crear comisión")
 
-        if fecha_ini > fecha_fin:
-            st.error("❌ La fecha de inicio no puede ser posterior a la fecha de finalización.")
-            st.stop()
+        if crear:
+            if not id_com:
+                st.warning("🟡 Ingresá un ID para la comisión.")
+                st.stop()
 
-        id_act = actividades_dict[act_sel]
-        año = fecha_ini.year
+            if fecha_ini > fecha_fin:
+                st.error("❌ La fecha de inicio no puede ser posterior a la fecha de finalización.")
+                st.stop()
 
-        hoy = datetime.today().date()
-        estado = "PENDIENTE" if hoy < fecha_ini else "FINALIZADA" if hoy > fecha_fin else "CURSANDO"
+            id_act = actividades_dict[actividad_sel_3]
+            año = fecha_ini.year
 
-        fecha_ini_str = fecha_ini.strftime("%d/%m/%Y")
-        fecha_fin_str = fecha_fin.strftime("%d/%m/%Y")
+            hoy = datetime.today().date()
+            estado = "PENDIENTE" if hoy < fecha_ini else "FINALIZADA" if hoy > fecha_fin else "CURSANDO"
 
-        com_ref = db.collection("comisiones").document(id_com)
-        seg_ref = db.collection("seguimiento").document(id_com)
+            fecha_ini_str = fecha_ini.strftime("%d/%m/%Y")
+            fecha_fin_str = fecha_fin.strftime("%d/%m/%Y")
 
-        if com_ref.get().exists:
-            st.error("❌ Ya existe una comisión con ese ID.")
-            st.stop()
+            com_ref = db.collection("comisiones").document(id_com)
+            seg_ref = db.collection("seguimiento").document(id_com)
 
-        try:
-            com_ref.set({
-                "Id_Comision": id_com,
-                "Id_Actividad": id_act,
-                "AñoComision": año,
-                "FechaInicio": fecha_ini_str,
-                "FechaFin": fecha_fin_str,
-                "EstadoComision": estado
-            })
+            if com_ref.get().exists:
+                st.error("❌ Ya existe una comisión con ese ID.")
+                st.stop()
 
-            pasos = ["C_ArmadoAula", "C_Matriculacion", "C_AperturaCurso", "C_CierreCurso", "C_AsistenciaEvaluacion",
-                     "D_Difusion", "D_AsignacionVacantes", "D_Cursada", "D_AsistenciaEvaluacion", "D_CreditosSAI"]
-            seguimiento_data = {"Id_Comision": id_com}
-            for paso in pasos:
-                seguimiento_data[paso] = False
-                seguimiento_data[f"{paso}_user"] = ""
-                seguimiento_data[f"{paso}_timestamp"] = ""
+            try:
+                com_ref.set({
+                    "Id_Comision": id_com,
+                    "Id_Actividad": actividades_dict[actividad_sel_3],
+                    "AñoComision": año,
+                    "FechaInicio": fecha_ini_str,
+                    "FechaFin": fecha_fin_str,
+                    "EstadoComision": estado
+                })
 
-            seg_ref.set(seguimiento_data)
+                pasos = ["C_ArmadoAula", "C_Matriculacion", "C_AperturaCurso", "C_CierreCurso", "C_AsistenciaEvaluacion",
+                         "D_Difusion", "D_AsignacionVacantes", "D_Cursada", "D_AsistenciaEvaluacion", "D_CreditosSAI"]
+                seguimiento_data = {"Id_Comision": id_com}
+                for paso in pasos:
+                    seguimiento_data[paso] = False
+                    seguimiento_data[f"{paso}_user"] = ""
+                    seguimiento_data[f"{paso}_timestamp"] = ""
 
-            st.success(f"✅ Comisión '{id_com}' creada correctamente.")
-            st.session_state["reset_comision"] = True
+                seg_ref.set(seguimiento_data)
 
-        except Exception as e:
-            st.error(f"❌ Error al crear la comisión: {e}")
+                st.success(f"✅ Comisión '{id_com}' creada correctamente.")
+                st.session_state["reset_comision"] = True
+
+            except Exception as e:
+                st.error(f"❌ Error al crear la comisión: {e}")
 
 # ─────────────────────────────────────────────────────────────
 # 🛠️ TAB 4: EDITAR COMISIONES EXISTENTES
@@ -302,44 +310,47 @@ with tab4:
 
     actividades = db.collection("actividades").stream()
     actividades_dict = {doc.id: doc.to_dict().get("NombreActividad", doc.id) for doc in actividades}
-    id_to_nombre = {v: k for k, v in actividades_dict.items()}
 
-    nombre_sel = st.selectbox("🔍 Filtrar por actividad:", sorted(actividades_dict.values()))
-    id_actividad = id_to_nombre[nombre_sel]
-    coms_filtradas = [c for c in comisiones if c["Id_Actividad"] == id_actividad]
+    # Búsqueda de actividad por texto (mín. 3 letras)
+    actividad_input_4 = st.text_input("🔍 Filtrar actividad (mín. 3 letras):", key="buscar_act_tab4")
+    actividad_sel_4 = None
+    actividad_match_4 = [actividades_dict[id_] for id_ in actividades_dict
+                         if actividad_input_4 and len(actividad_input_4) >= 3 and actividad_input_4.lower() in actividades_dict[id_].lower()]
+    if actividad_match_4:
+        actividad_sel_4 = st.selectbox("Coincidencias encontradas:", actividad_match_4, key="match_tab4")
 
-    if not coms_filtradas:
-        st.warning("No hay comisiones para esta actividad.")
-        st.stop()
+    if actividad_sel_4:
+        id_actividad = next(key for key, val in actividades_dict.items() if val == actividad_sel_4)
+        coms_filtradas = [c for c in comisiones if c["Id_Actividad"] == id_actividad]
 
-    com_ids = [c["Id_Comision"] for c in coms_filtradas]
-    com_id_sel = st.selectbox("🔍 Seleccioná una comisión:", com_ids)
-    com_data = next(c for c in coms_filtradas if c["Id_Comision"] == com_id_sel)
+        if not coms_filtradas:
+            st.warning("No hay comisiones para esta actividad.")
+            st.stop()
 
-    with st.form("form_editar_comision"):
-        st.subheader(f"✏️ Editar comisión: {com_id_sel}")
-        f_ini = datetime.strptime(com_data["FechaInicio"], "%d/%m/%Y").date()
-        f_fin = datetime.strptime(com_data["FechaFin"], "%d/%m/%Y").date()
-        f_ini = st.date_input("Fecha de inicio", value=f_ini)
-        f_fin = st.date_input("Fecha de finalización", value=f_fin)
-        vac = st.number_input("Vacantes", value=com_data.get("Vacantes", 0), min_value=0)
-        apr = st.number_input("Aprobados", value=com_data.get("Aprobados", 0), min_value=0)
-        guardar = st.form_submit_button("💾 Actualizar comisión")
+        com_id_sel = st.selectbox("🔍 Seleccioná una comisión:", [c["Id_Comision"] for c in coms_filtradas], key="match_com4")
+        com_data = next(c for c in coms_filtradas if c["Id_Comision"] == com_id_sel)
 
-    if guardar:
-        hoy = datetime.today().date()
-        estado = "PENDIENTE" if hoy < f_ini else "FINALIZADA" if hoy > f_fin else "CURSANDO"
-        try:
-            db.collection("comisiones").document(com_id_sel).update({
-                "FechaInicio": f_ini.strftime("%d/%m/%Y"),
-                "FechaFin": f_fin.strftime("%d/%m/%Y"),
-                "Vacantes": vac,
-                "Aprobados": apr,
-                "EstadoComision": estado
-            })
-            st.success("✅ Comisión actualizada correctamente")
-        except Exception as e:
-            st.error(f"❌ Error al actualizar: {e}")
+        with st.form("form_editar_comision"):
+            st.subheader(f"✏️ Editar comisión: {com_id_sel}")
+            f_ini = datetime.strptime(com_data["FechaInicio"], "%d/%m/%Y").date()
+            f_fin = datetime.strptime(com_data["FechaFin"], "%d/%m/%Y").date()
+            f_ini = st.date_input("Fecha de inicio", value=f_ini)
+            f_fin = st.date_input("Fecha de finalización", value=f_fin)
+            vac = st.number_input("Vacantes", value=com_data.get("Vacantes", 0), min_value=0)
+            apr = st.number_input("Aprobados", value=com_data.get("Aprobados", 0), min_value=0)
+            guardar = st.form_submit_button("💾 Actualizar comisión")
 
-
-
+        if guardar:
+            hoy = datetime.today().date()
+            estado = "PENDIENTE" if hoy < f_ini else "FINALIZADA" if hoy > f_fin else "CURSANDO"
+            try:
+                db.collection("comisiones").document(com_id_sel).update({
+                    "FechaInicio": f_ini.strftime("%d/%m/%Y"),
+                    "FechaFin": f_fin.strftime("%d/%m/%Y"),
+                    "Vacantes": vac,
+                    "Aprobados": apr,
+                    "EstadoComision": estado
+                })
+                st.success("✅ Comisión actualizada correctamente")
+            except Exception as e:
+                st.error(f"❌ Error al actualizar: {e}")
